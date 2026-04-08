@@ -1,5 +1,6 @@
 import ReactorImg from '../assets/images/reactor.png';
 import { CardDrum } from './CardDrum';
+import { GiftCalendar } from './GiftCalendar';
 
 export const FortuneWheel = () => {
 	return (
@@ -12,6 +13,8 @@ export const FortuneWheel = () => {
 				<img src={ReactorImg} width={72} height={72} alt="reactor" />
 			</div>
 			<CardDrum />
+			<p className='text-xl mt-4 mx-6 leading-5'>Крути колесо 7 дней подряд без пропусков и получи на 7-й день<br />гарантированный 1 день подписки!</p>
+			<GiftCalendar />
 		</div>
 	)
 }

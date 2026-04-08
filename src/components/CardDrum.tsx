@@ -3,26 +3,30 @@ import ExplosionImg from "../assets/images/explosion.png";
 import GiftDiscountImg from "../assets/images/gift.1.png";
 import GiftImg from "../assets/images/gift.png";
 import { GiftCard } from "./GiftCard";
+import { GiftIcon } from "../assets/icons";
+import { GiftResultModal } from "./GiftResultModal";
 
 type Card = {
 	title: string;
 	imageUrl: string;
 	content: string;
+	hint?: string;
+	isBlank?: boolean;
 };
 
 const BASE_CARDS: Card[] = [
-	{ title: "Бесплатные", imageUrl: GiftImg, content: "6 часов" },
-	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "10%" },
-	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "20%" },
-	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "50%" },
-	{ title: "Попробуйте", imageUrl: ExplosionImg, content: "завтра" },
-	{ title: "Бесплатные", imageUrl: GiftImg, content: "2 часа" },
-	{ title: "Бесплатные", imageUrl: GiftImg, content: "12 часов" },
-	{ title: "Попробуйте", imageUrl: ExplosionImg, content: "завтра" },
-	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "30%" },
-	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "40%" },
-	{ title: "Бесплатные", imageUrl: GiftImg, content: "4 часа" },
-	{ title: "Бесплатные", imageUrl: GiftImg, content: "8 часов" },
+	{ title: "Бесплатные", imageUrl: GiftImg, content: "6 часов", hint: "Они уже добавлены к вашей подписке" },
+	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "10%", hint: "Активируйте в течение 24 часов" },
+	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "20%", hint: "Активируйте в течение 24 часов" },
+	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "50%", hint: "Активируйте в течение 24 часов" },
+	{ title: "Попробуйте", imageUrl: ExplosionImg, content: "завтра", isBlank: true },
+	{ title: "Бесплатные", imageUrl: GiftImg, content: "2 часа", hint: "Они уже добавлены к вашей подписке" },
+	{ title: "Бесплатные", imageUrl: GiftImg, content: "12 часов", hint: "Они уже добавлены к вашей подписке" },
+	{ title: "Попробуйте", imageUrl: ExplosionImg, content: "завтра", isBlank: true },
+	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "30%", hint: "Активируйте в течение 24 часов" },
+	{ title: "Скидка", imageUrl: GiftDiscountImg, content: "40%", hint: "Активируйте в течение 24 часов" },
+	{ title: "Бесплатные", imageUrl: GiftImg, content: "4 часа", hint: "Они уже добавлены к вашей подписке" },
+	{ title: "Бесплатные", imageUrl: GiftImg, content: "8 часов", hint: "Они уже добавлены к вашей подписке" },
 ];
 
 const CARD_WIDTH = 120;
@@ -33,9 +37,29 @@ const MIN_STEPS = BASE_CARDS.length * 4;
 const MAX_STEPS = BASE_CARDS.length * 7;
 const REBASE_THRESHOLD = BASE_CARDS.length * 30;
 const REBASE_SHIFT = BASE_CARDS.length * 20;
+const RESULT_STORAGE_KEY = "card-drum-result-index";
 
 const getRandomInt = (min: number, max: number) => {
 	return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+const getStoredResultIndex = () => {
+	if (typeof window === "undefined") {
+		return null;
+	}
+
+	const storedValue = window.sessionStorage.getItem(RESULT_STORAGE_KEY);
+	if (storedValue === null) {
+		return null;
+	}
+
+	const parsedIndex = Number.parseInt(storedValue, 10);
+	if (Number.isNaN(parsedIndex) || parsedIndex < 0 || parsedIndex >= BASE_CARDS.length) {
+		window.sessionStorage.removeItem(RESULT_STORAGE_KEY);
+		return null;
+	}
+
+	return parsedIndex;
 };
 
 export const CardDrum = () => {
@@ -50,12 +74,17 @@ export const CardDrum = () => {
 	const [viewportWidth, setViewportWidth] = useState(0);
 	const [viewportPaddingLeft, setViewportPaddingLeft] = useState(0);
 	const [cardSize, setCardSize] = useState({ width: CARD_WIDTH, height: 220 });
-	const [activeIndex, setActiveIndex] = useState(START_INDEX);
+	const [activeIndex, setActiveIndex] = useState(() => {
+		const storedResultIndex = getStoredResultIndex();
+		return storedResultIndex === null ? START_INDEX : START_INDEX + storedResultIndex;
+	});
 	const [transitionMs, setTransitionMs] = useState(0);
 	const [isSpinning, setIsSpinning] = useState(false);
-	const [resultCard, setResultCard] = useState<Card>(
-		BASE_CARDS[START_INDEX % BASE_CARDS.length],
-	);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [resultCard, setResultCard] = useState<Card | null>(() => {
+		const storedResultIndex = getStoredResultIndex();
+		return storedResultIndex === null ? null : BASE_CARDS[storedResultIndex];
+	});
 	const step = cardSize.width + CARD_GAP;
 
 	const offset = viewportWidth / 2 - viewportPaddingLeft - cardSize.width / 2 - activeIndex * step;
@@ -97,15 +126,15 @@ export const CardDrum = () => {
 	}, []);
 
 	const handleSpin = () => {
-		if (isSpinning) {
+		if (isSpinning || resultCard) {
 			return;
 		}
 
 		const spinDuration = getRandomInt(4300, 6200);
 		const steps = getRandomInt(MIN_STEPS, MAX_STEPS);
 		const targetIndex = activeIndex + steps;
+		const resultIndex = targetIndex % BASE_CARDS.length;
 
-		setResultCard(BASE_CARDS[targetIndex % BASE_CARDS.length]);
 		setTransitionMs(spinDuration);
 		setIsSpinning(true);
 		setActiveIndex(targetIndex);
@@ -117,6 +146,9 @@ export const CardDrum = () => {
 		timeoutRef.current = window.setTimeout(() => {
 			setTransitionMs(0);
 			setIsSpinning(false);
+			setResultCard(BASE_CARDS[resultIndex]);
+			setIsModalOpen(true);
+			window.sessionStorage.setItem(RESULT_STORAGE_KEY, String(resultIndex));
 			setActiveIndex((prevIndex) => {
 				if (prevIndex > REBASE_THRESHOLD) {
 					return prevIndex - REBASE_SHIFT;
@@ -128,7 +160,8 @@ export const CardDrum = () => {
 	};
 
 	return (
-		<div>
+		<>
+			<div>
 			<div
 				ref={viewportRef}
 				className="relative overflow-hidden p-3"
@@ -177,18 +210,18 @@ export const CardDrum = () => {
 					))}
 				</div>
 			</div>
-
-			<div className="mt-4 flex items-center justify-between gap-4">
-				<p className="font-kelly text-[30px] uppercase leading-none">Приз: {resultCard.content}</p>
+			{!isSpinning && !resultCard && (
 				<button
 					type="button"
 					onClick={handleSpin}
-					disabled={isSpinning}
-					className="font-kelly rounded-full bg-brand-red px-7 py-3 text-xl uppercase disabled:cursor-not-allowed disabled:opacity-60"
+					className="mt-1 mx-6 w-[calc(100%-48px)] flex items-center justify-center gap-4 leading-0 text-brand-white rounded-full bg-brand-red py-2 text-2xl font-semibold uppercase"
 				>
-					{isSpinning ? "Крутим" : "Крутить"}
+					<span>Испытать удачу</span>
+					<GiftIcon />
 				</button>
+			)}
 			</div>
-		</div>
+			<GiftResultModal card={resultCard} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+		</>
 	);
 };
